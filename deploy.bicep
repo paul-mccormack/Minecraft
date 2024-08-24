@@ -4,6 +4,9 @@ param baseName string
 @description('The region where the resources will be deployed. If not specified, it will be the same as the resource groups region.')
 param location string = resourceGroup().location
 
+@description('Tags.  Always with the tags.')
+param tags object
+
 @description('The CIDR of the entire virtual network.')
 param vnetCidr string
 
@@ -60,6 +63,7 @@ var containerName = 'minecraft'
 @description('Deploy the Azure Container App Environement')
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: containerName
+  tags: tags
   location: location
   properties: {
     managedEnvironmentId: containerAppEnvironment.id
@@ -121,6 +125,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 @description('Deploy vnet for Container Instances and enable Storage Service Endpoint')
 resource virtualNetwork 'Microsoft.Network/virtualNetworks@2023-11-01' = {
   name: vnetName
+  tags: tags
   location: location
   properties: {
     addressSpace: {
@@ -167,6 +172,7 @@ resource containerAppEnvironmentStorage 'Microsoft.App/managedEnvironments/stora
 @description('Configure Logging to Azure Monitor')
 resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: acaName
+  tags: tags
   location: location
   properties: {
     vnetConfiguration: {
@@ -182,6 +188,7 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' 
 @description('Deploy Log Analytics Workspace')
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: omsName
+  tags: tags
   location: location
   properties: {
     sku: {
@@ -210,6 +217,7 @@ resource containerAppEnvironmentDiagnostics 'Microsoft.Insights/diagnosticSettin
 @description('Deploy Storage account')
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageName
+  tags: tags
   location: location
   sku: {
     name: 'Premium_LRS'

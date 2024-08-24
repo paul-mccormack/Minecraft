@@ -1,6 +1,13 @@
 using 'deploy.bicep'
 
 param baseName = 'minecraft'
+param tags = {
+  'Created by': 'Paul McCormack'
+  'Management Area': 'DDaT'
+  Service: 'Training'
+  Purpose: 'Training'
+  Recharge: 'DDaT'
+}
 param cpu = '1.0'
 param memory = '2.0Gi'
 param vnetCidr = '10.10.0.0/16'
