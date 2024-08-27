@@ -18,9 +18,13 @@ jobs:
 
     - name: Deploy Bicep file
       uses: azure/arm-deploy@v2
+      id: deploy
       with:
+        scope: resourcegroup
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
         resourceGroupName: ${{ secrets.AZURE_RG }}
         template: ./deploy.bicep
         parameters: ./deploy.bicepparam
         failOnStdErr: false
+    
+    - run: echo ${{ steps.deploy.outputs.minecraftServerAddress}} 
