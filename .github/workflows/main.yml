@@ -18,9 +18,24 @@ jobs:
         enable-AzPSSession: true
 
     - name: Create RG
+      id: rg
       uses: azure/powershell@v2
+      env:
+        POWERSHELL_TELEMETRY_OUTPUT: 1
       with:
-        inlineScript: 
+        inlineScript: |
+          $RGroupName = "rg-uks-sandbox-github-actions-paulmc"
+          $RGroupLocation = "UK South"
+          $ResourceGroupTags = @{
+          "Created By" = "Paul McCormack"; 
+          "Environment" = "Training";
+          "Service" = "Training";
+          "Management Area" = "DDaT";
+          "Recharge" = "DDaT";
+          }
+          Set-AzContext -SubscriptionId ${{secrets.AZURE_SUBSCRIPTION}}
+          New-AzResourceGroup -Name $RGroupName -Location $RGroupLocation -Tag $ResourceGroupTags
+          Write-Output "rgName=$($RGroupName)" >> $Env:GITHUB_OUTPUT
         azPSVersion: "latest"
 
     - name: Deploy Bicep file
@@ -29,9 +44,9 @@ jobs:
       with:
         scope: resourcegroup
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-        resourceGroupName: ${{ secrets.AZURE_RG }}
+        resourceGroupName: ${{ steps.rg.outputs.rgName }}
         template: ./deploy.bicep
         parameters: ./deploy.bicepparam
         failOnStdErr: false
     
-    - run: echo ${{ steps.deploy.outputs.minecraftServerAddress}} 
+    - run: echo ${{ steps.deploy.outputs.minecraftServerAddress }} 

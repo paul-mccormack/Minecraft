@@ -12,3 +12,4 @@ $ResourceGroupTags = @{
 
 # Create Resource Group
 New-AzResourceGroup -Name $RGroupName -Location $RGroupLocation -Tag $ResourceGroupTags
+Write-Output "rgName=$($RGroupName)" >> $Env:GITHUB_OUTPUT
