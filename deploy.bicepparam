@@ -1,6 +1,6 @@
 using 'deploy.bicep'
 
-param baseName = 'minecraft'
+param baseName = 'modops'
 param tags = {
   'Created by': 'Paul McCormack'
   'Management Area': 'DDaT'
