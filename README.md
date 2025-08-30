@@ -1,6 +1,6 @@
 <center>
 
-![minecraft](https://dev.azure.com/scc-ddat-infrastructure/988c4108-f777-449f-80ba-457b19ba16ab/_apis/git/repositories/d07136b9-c0f4-4ec9-b5b2-8bcbafccb33d/items?path=/images/minecraft-banner.jpg&versionDescriptor%5BversionOptions%5D=0&versionDescriptor%5BversionType%5D=0&versionDescriptor%5Bversion%5D=main&resolveLfs=true&%24format=octetStream&api-version=5.0)
+![minecraft](https://raw.githubusercontent.com/paul-mccormack/Minecraft/refs/heads/main/images/minecraft-banner.jpg)
 
 </center>
 
