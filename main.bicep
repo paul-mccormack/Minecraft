@@ -1,0 +1,243 @@
+metadata templateInfo = {
+  author: 'Paul McCormack'
+  email: 'paul.mccormack@salford.gov.uk'
+  description: 'Bicep template for deploying a minecraft server onto Azure Container Instances with a Storage Account for persistant state'
+  date: '17-4-25'
+  version: '2.0'
+}
+
+//
+// Parameters
+//
+
+@description('Required: Base string to be assigned to Azure resources')
+@minLength(3)
+@maxLength(24)
+param appName string
+
+@description('Required: The region where the resources will be deployed. If not specified, it will be the same as the resource groups region.')
+param location string = resourceGroup().location
+
+@description('Required: Docker image URL for Minecraft Java Edition by itzg.')
+param appImage string
+
+@description('Required: Is the container app exposed to the internet or privately.')
+@allowed([
+  'Public'
+  'Private'
+])
+param networkConfig string
+
+@description('Required: Network port number')
+param port int
+
+@description('Required: Network protocol.  TCP or UDP')
+@allowed([
+  'TCP'
+  'UDP'
+])
+param protocol string
+
+@description('Required: Number of CPU cores for container.  1 to 4')
+@minValue(1)
+@maxValue(4)
+param cpuCores int
+
+@description('Required: The amount of memory to allocate to the container in gigabytes. 1 to 16')
+@minValue(1)
+@maxValue(16)
+param memoryInGb int
+
+@description('Required: Container OS')
+@allowed([
+  'Windows'
+  'Linux'
+])
+param osType string
+
+@description('Required: The behavior of Azure runtime if container has stopped.')
+@allowed([
+  'Always'
+  'Never'
+  'OnFailure'
+])
+param restartPolicy string
+
+@description('Required: Storage SKU')
+@allowed([
+  'Standard_LRS'
+  'Standard_GRS'
+  'Standard_RAGRS'
+  'Standard_ZRS'
+  'Premium_LRS'
+  'Premium_ZRS'
+  'Standard_GZRS'
+  'Standard_RAGZRS'
+])
+param storageSKU string
+
+@description('Required: Container mount path')
+param containerMountPath string
+
+//
+// Variables
+//
+
+@description('Generate unique storage account name from appName and ensure valid for deployment.')
+var uniqueStorageName = toLower('${appName}${uniqueString(resourceGroup().id)}')
+var storageName = take(uniqueStorageName, 24)
+
+@description('Generate fileshare name')
+var fileShareName = toLower('${appName}-share')
+
+@description('Generate Log Analytics Workspace name')
+var lawName = toLower('${appName}-diagnostics')
+
+//
+// Resources
+//
+
+@description('Deploy storage account')
+resource stg 'Microsoft.Storage/storageAccounts@2024-01-01' = {
+  name: storageName
+  location: location
+  sku: {
+    name: storageSKU
+  }
+  kind: 'StorageV2'
+  properties: {
+    supportsHttpsTrafficOnly: true
+    accessTier: 'Hot'
+    minimumTlsVersion: 'TLS1_2'
+    allowSharedKeyAccess: true
+  }
+}
+
+@description('Enable File Services')
+resource fileServices 'Microsoft.Storage/storageAccounts/fileServices@2024-01-01' = {
+  name: 'default'
+  parent: stg
+}
+
+@description('Create Files Share')
+resource storageAccountFileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2024-01-01' = {
+  parent: fileServices
+  name: fileShareName
+  properties: {
+    shareQuota: 100
+  }
+}
+
+@description('')
+resource law 'Microsoft.OperationalInsights/workspaces@2025-02-01' = {
+  name: lawName
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+  }
+}
+
+@description('')
+resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2024-10-01-preview' = {
+  name: appName
+  location: location
+  properties: {
+    containers: [
+      {
+        name: appName
+        properties: {
+          image: appImage
+          ports: [
+            {
+              port: port
+              protocol: protocol
+            }
+          ]
+          resources: {
+            requests: {
+              cpu: cpuCores
+              memoryInGB: memoryInGb
+            }
+          }
+          volumeMounts: [
+            {
+              name: fileShareName
+              mountPath: containerMountPath
+              readOnly: false
+            }
+          ]
+          environmentVariables: [
+            {
+              name: 'EULA'
+              value: 'TRUE'
+            }
+            {
+              name: 'UID'
+              value: '0'
+            }
+            {
+              name: 'GID'
+              value: '0'
+            }
+            {
+              name: 'MAX_PLAYERS'
+              value: '5'
+            }
+            {
+              name: 'MODE'
+              value: 'survival'
+            }
+            {
+              name: 'DIFFICULTY'
+              value: 'normal'
+            }
+          ]
+        }
+      }
+    ]
+    volumes: [
+      {
+        name: fileShareName
+        azureFile: {
+          shareName: fileShareName
+          storageAccountName: stg.name
+          storageAccountKey: stg.listKeys().keys[0].value
+          readOnly: false
+        }
+      }
+    ]
+    osType: osType
+    restartPolicy: restartPolicy
+    ipAddress: {
+      ports: [
+        {
+          port: port
+          protocol: protocol
+        }
+      ]
+      type: networkConfig
+      autoGeneratedDomainNameLabelScope: 'ResourceGroupReuse'
+      dnsNameLabel: appName
+    }
+    diagnostics: {
+      logAnalytics: {
+        logType: 'ContainerInstanceLogs'
+        workspaceId: law.properties.customerId
+        workspaceKey: law.listKeys().primarySharedKey
+      }
+    }
+  }
+}
+
+
+//
+// Outputs
+//
+
+output fqdn string = containerGroup.properties.ipAddress.fqdn
+
+//uncomment the output below to trigger an error causing the deployment to fail
+//output secret string = stg.listKeys().keys[0].value
